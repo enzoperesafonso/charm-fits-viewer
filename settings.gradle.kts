@@ -4,4 +4,4 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
-rootProject.name = "charm-fits-viewer"
+rootProject.name = "intellij-fits-viewer"

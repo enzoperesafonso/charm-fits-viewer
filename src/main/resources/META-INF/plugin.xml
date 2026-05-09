@@ -1,24 +1,11 @@
 <idea-plugin>
-    <id>com.astro.fits.viewer</id>
-    <name>FITS Viewer Pro</name>
-    <vendor email="support@enzperesafonso.astro" url="https://github.com/enzperesafonso/fits-viewer-pro">enzperesafonso</vendor>
+    <id>com.github.enzperesafonso.intellij-fits-viewer</id>
+    <name>%plugin.name</name>
+    <vendor email="support@example.com" url="https://github.com/enzperesafonso/intellij-fits-viewer">enzperesafonso</vendor>
 
-    <description><![CDATA[
-    A professional-grade FITS (Flexible Image Transport System) file viewer for the IntelliJ Platform.
-    <br><br>
-    <b>Features:</b>
-    <ul>
-        <li><b>High-Performance Rendering:</b> View large FITS images with zero lag.</li>
-        <li><b>Advanced Stretching:</b> Linear, Log, Sqrt, and <b>Asinh</b> (Inverse Hyperbolic Sine) stretching for high-dynamic-range data.</li>
-        <li><b>Coordinate System:</b> Full WCS support with professional <b>HMS/DMS</b> coordinate readouts.</li>
-        <li><b>Compressed FITS:</b> Built-in support for <b>.fits.fz</b> (Rice-compressed) files.</li>
-        <li><b>Multi-HDU Support:</b> Easily switch between primary images, extensions, and metadata tables in a single file.</li>
-        <li><b>Analysis Tools:</b> Interactive histogram, crosshair, and measurement tool.</li>
-    </ul>
-    ]]></description>
+    <description>%plugin.description</description>
 
     <!-- Product and plugin compatibility requirements -->
-    <!-- https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
     <depends>com.intellij.modules.platform</depends>
 
     <extensions defaultExtensionNs="com.intellij">
@@ -45,4 +32,5 @@
 
     <!-- Compatibility settings -->
     <idea-version since-build="232"/>
+    <resource-bundle>messages.FitsViewerBundle</resource-bundle>
 </idea-plugin>

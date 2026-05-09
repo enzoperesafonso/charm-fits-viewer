@@ -1,8 +1,8 @@
-# FITS Viewer for IntelliJ & PyCharm
+# IntelliJ FITS Viewer
 
 A plugin for JetBrains IDEs (like IntelliJ IDEA and PyCharm) that allows you to view and inspect FITS (Flexible Image Transport System) files.
 
-![FITS Viewer Screenshot](https.placeholder.com/screenshot.png) <!-- TODO: Add a real screenshot -->
+![FITS Viewer Screenshot](https://raw.githubusercontent.com/enzperesafonso/intellij-fits-viewer/main/art/screenshot.png) <!-- TODO: Update with your new repo name -->
 
 ---
 
@@ -11,32 +11,26 @@ A plugin for JetBrains IDEs (like IntelliJ IDEA and PyCharm) that allows you to 
 - **Header Viewer**: Displays all FITS header keywords, values, and comments from the Primary HDU in a clear, searchable table.
 - **Image Viewer**: Renders the 2D image data from the Primary HDU.
 - **Simple Image Stretching**: Applies a basic 5th-95th percentile linear stretch to make astronomical images with high dynamic range visible.
-- **File Type Integration**: Registers `.fits` and `.fit` file extensions to be opened with this custom editor automatically.
+- **File Type Integration**: Registers `.fits`, `.fit`, and `.fz` file extensions to be opened with this custom editor automatically.
 
 ## Installation
 
-1.  **From JetBrains Marketplace** (Recommended):
-    - Go to `Settings` > `Plugins`.
-    - Search for "FITS Viewer" in the Marketplace tab and click `Install`.
-    - Restart the IDE.
-
-2.  **From a `.zip` file**:
-    - Download the latest release `.zip` file from the [Releases](https://github.com/your-username/charm-fits-viewer/releases) page.
-    - Go to `Settings` > `Plugins`.
-    - Click the gear icon ⚙️ and select `Install Plugin from Disk...`.
-    - Choose the downloaded `.zip` file and restart the IDE.
+1.  Download the latest release `.zip` file from the [Releases](https://github.com/enzperesafonso/intellij-fits-viewer/releases) page.
+2.  In your IDE, go to `Settings` > `Plugins`.
+3.  Click the gear icon ⚙️ and select `Install Plugin from Disk...`.
+4.  Choose the downloaded `.zip` file and restart the IDE.
 
 ## Building from Source
 
 This project is built with Gradle.
 
 1.  **Prerequisites**:
-    - A Java 17 JDK must be installed. Ensure your `JAVA_HOME` environment variable is set to its path.
+    - A compatible Java JDK must be installed. Ensure your `JAVA_HOME` environment variable is set to its path.
 
 2.  **Clone the repository**:
     ```sh
-    git clone https://github.com/your-username/charm-fits-viewer.git
-    cd charm-fits-viewer
+    git clone https://github.com/enzperesafonso/intellij-fits-viewer.git
+    cd intellij-fits-viewer
     ```
 
 3.  **Build the plugin**:
