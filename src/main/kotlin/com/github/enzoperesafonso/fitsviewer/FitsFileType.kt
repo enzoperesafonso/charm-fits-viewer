@@ -1,8 +1,7 @@
-package org.example
+package com.github.enzoperesafonso.fitsviewer
 
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.fileTypes.FileType
-import com.intellij.openapi.util.NlsContexts
-import com.intellij.openapi.util.NlsSafe
 import com.intellij.openapi.vfs.VirtualFile
 import javax.swing.Icon
 
@@ -12,13 +11,13 @@ class FitsFileType private constructor() : FileType {
         val INSTANCE = FitsFileType()
     }
 
-    override fun getName(): @NlsSafe String = "FITS"
+    override fun getName(): String = "FITS"
 
-    override fun getDescription(): @NlsContexts.Label String = "FITS Image File"
+    override fun getDescription(): String = "FITS image"
 
-    override fun getDefaultExtension(): @NlsSafe String = "fits"
+    override fun getDefaultExtension(): String = "fits"
 
-    override fun getIcon(): Icon? = null
+    override fun getIcon(): Icon = AllIcons.FileTypes.Image
 
     override fun isBinary(): Boolean = true
 

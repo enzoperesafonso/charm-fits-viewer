@@ -1,12 +1,22 @@
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
+import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
+
 plugins {
-    id("java")
-    id("org.jetbrains.kotlin.jvm") version "1.9.24"
-    id("org.jetbrains.intellij.platform") version "2.1.0"
+    id("org.jetbrains.kotlin.jvm") version "2.4.21"
+    id("org.jetbrains.intellij.platform") version "2.19.0"
 }
 
-// The group should match the base of your plugin's ID.
-group = "com.github.enzperesafonso"
-version = project.findProperty("pluginVersion") ?: "1.0.0-SNAPSHOT"
+group = providers.gradleProperty("pluginGroup").get()
+version = providers.gradleProperty("pluginVersion").get()
+
+kotlin {
+    jvmToolchain(21)
+    compilerOptions {
+        // The IDE provides the Kotlin stdlib at runtime; don't use APIs newer than the oldest supported IDE ships.
+        apiVersion = KotlinVersion.KOTLIN_2_0
+    }
+}
 
 repositories {
     mavenCentral()
@@ -15,45 +25,57 @@ repositories {
     }
 }
 
-// Configure the IntelliJ Platform plugin
+dependencies {
+    implementation("gov.nasa.gsfc.heasarc:nom-tam-fits:1.23.0") {
+        // Compile-time annotations only; not needed at runtime.
+        exclude(group = "com.github.spotbugs")
+        exclude(group = "jakarta.annotation")
+    }
+
+    testImplementation("junit:junit:4.13.2")
+
+    intellijPlatform {
+        create(IntelliJPlatformType.PyCharmCommunity, providers.gradleProperty("platformVersion")) {
+            // Resolve from the IntelliJ Maven repository rather than the installer feed
+            useInstaller = false
+        }
+        testFramework(TestFrameworkType.Platform)
+    }
+}
+
 intellijPlatform {
     pluginConfiguration {
-        xml.set(project.layout.projectDirectory.file("src/main/resources/META-INF/plugin.xml"))
-        icon.set(project.layout.projectDirectory.file("src/main/resources/META-INF/pluginIcon.svg"))
+        version = providers.gradleProperty("pluginVersion")
         ideaVersion {
-            sinceBuild.set("232")
-            untilBuild.set("999.*")
+            sinceBuild = providers.gradleProperty("pluginSinceBuild")
+            untilBuild = provider { null }
+        }
+        changeNotes = """
+            <b>1.1.0</b>
+            <ul>
+              <li>Much lower memory use: only the selected image plane is read, large images are downsampled for display, and nothing is kept after the tab is closed.</li>
+              <li>All file reading happens in the background; the IDE no longer freezes when switching HDUs.</li>
+              <li>Correct BSCALE/BZERO/BLANK handling, unsigned 8-bit data, and FITS orientation (row 1 at the bottom).</li>
+              <li>Data cubes: choose which plane to show.</li>
+              <li>Accurate RA/Dec readout for TAN, SIN, ARC, ZEA and STG projections; on-sky measurement uses true angular separation.</li>
+              <li>Reloads automatically when the file changes on disk.</li>
+            </ul>
+        """.trimIndent()
+    }
+
+    pluginVerification {
+        ides {
+            recommended()
         }
     }
-}
 
-dependencies {
-    intellijPlatform {
-        intellijIdeaCommunity("2023.2.5")
-        bundledPlugin("com.intellij.java")
-        instrumentationTools()
+    signing {
+        certificateChain = providers.environmentVariable("CERTIFICATE_CHAIN")
+        privateKey = providers.environmentVariable("PRIVATE_KEY")
+        password = providers.environmentVariable("PRIVATE_KEY_PASSWORD")
     }
-    implementation("gov.nasa.gsfc.heasarc:nom-tam-fits:1.22.0")
-    testImplementation(platform("org.junit:junit-bom:6.0.0"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-}
 
-tasks.test {
-    useJUnitPlatform()
-}
-
-// This task automatically patches the plugin.xml file with the version and change notes.
-tasks.patchPluginXml {
-    pluginVersion.set(project.version.toString())
-    changeNotes.set(
-        """
-        <b>${project.version}</b>
-        <ul>
-            <li>Initial release of the IntelliJ FITS Viewer plugin.</li>
-            <li>Displays FITS header keywords and values in a table.</li>
-            <li>Shows primary image data with a 5th-95th percentile linear stretch.</li>
-        </ul>
-        """.trimIndent()
-    )
+    publishing {
+        token = providers.environmentVariable("PUBLISH_TOKEN")
+    }
 }

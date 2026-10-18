@@ -1,48 +1,59 @@
-# IntelliJ FITS Viewer
+# FITS Viewer for PyCharm
 
-A plugin for JetBrains IDEs (like IntelliJ IDEA and PyCharm) that allows you to view and inspect FITS (Flexible Image Transport System) files.
-
-![FITS Viewer Screenshot](https://raw.githubusercontent.com/enzperesafonso/intellij-fits-viewer/main/art/screenshot.png) <!-- TODO: Update with your new repo name -->
-
----
+A plugin for PyCharm and other JetBrains IDEs that opens FITS (Flexible Image Transport System) files in an image viewer instead of as unreadable binary.
 
 ## Features
 
-- **Header Viewer**: Displays all FITS header keywords, values, and comments from the Primary HDU in a clear, searchable table.
-- **Image Viewer**: Renders the 2D image data from the Primary HDU.
-- **Simple Image Stretching**: Applies a basic 5th-95th percentile linear stretch to make astronomical images with high dynamic range visible.
-- **File Type Integration**: Registers `.fits`, `.fit`, and `.fz` file extensions to be opened with this custom editor automatically.
+- **Image viewer** for every image HDU, including tile-compressed (`.fz`) images and data cubes (pick the plane)
+- **Stretches:** linear, log, square root and asinh, with grayscale, heat, viridis and magma colour maps
+- **Interactive histogram** to drag the black and white levels, plus *Auto (2–98%)* and *Min / Max* presets
+- **Cursor readout:** pixel coordinates, value and RA/Dec (TAN, SIN, ARC, ZEA and STG projections)
+- **Magnifier, crosshair and measuring tool** (pixel distance and on-sky separation)
+- **Header browser** for every HDU, with filtering
+- **Reloads automatically** when the file changes on disk, for example when a script rewrites it
+
+Opens `.fits`, `.fit`, `.fts` and `.fz` files. Gzip-compressed FITS files with those extensions work too.
+
+Pixel coordinates are 0-based with `y` increasing upwards, so the value shown at `x, y` is `data[y, x]` in NumPy and astropy. Images are drawn with the first row at the bottom, like `imshow(..., origin="lower")` and DS9.
+
+### Memory use
+
+Only headers and the plane being displayed are held in memory, and nothing is kept once the tab is closed. Planes larger than 4096×4096 pixels are downsampled for display (every *n*-th pixel); the status bar says when that happens, and coordinates and values still refer to original pixels. Each open FITS tab uses at most about 130 MB.
 
 ## Installation
 
-1.  Download the latest release `.zip` file from the [Releases](https://github.com/enzperesafonso/intellij-fits-viewer/releases) page.
-2.  In your IDE, go to `Settings` > `Plugins`.
-3.  Click the gear icon ⚙️ and select `Install Plugin from Disk...`.
-4.  Choose the downloaded `.zip` file and restart the IDE.
+Requires PyCharm (or another JetBrains IDE) 2024.3 or newer.
 
-## Building from Source
+1. Download the latest `.zip` from the [Releases](https://github.com/enzoperesafonso/charm-fits-viewer/releases) page.
+2. In the IDE, open **Settings → Plugins**, click the ⚙️ icon and choose **Install Plugin from Disk…**
+3. Select the downloaded `.zip`. No restart needed.
 
-This project is built with Gradle.
+## Development
 
-1.  **Prerequisites**:
-    - A compatible Java JDK must be installed. Ensure your `JAVA_HOME` environment variable is set to its path.
+You need Git and any JDK 17+ to run Gradle. Gradle downloads JDK 21 for compiling if you don't have it.
 
-2.  **Clone the repository**:
-    ```sh
-    git clone https://github.com/enzperesafonso/intellij-fits-viewer.git
-    cd intellij-fits-viewer
-    ```
+```sh
+./gradlew runIde        # launch a sandbox PyCharm with the plugin installed
+./gradlew check         # run the tests
+./gradlew buildPlugin   # build the installable zip into build/distributions/
+./gradlew verifyPlugin  # check binary compatibility against recent IDE releases (large download)
+```
 
-3.  **Build the plugin**:
-    ```sh
-    ./gradlew buildPlugin
-    ```
-    The distributable `.zip` file will be created in `build/distributions/`.
+`platformVersion` in `gradle.properties` sets the IDE that `runIde` launches and the build compiles against. `pluginSinceBuild` is the oldest IDE the plugin supports.
+
+## Releasing
+
+1. Bump `pluginVersion` in `gradle.properties` and update the change notes in `build.gradle.kts`.
+2. Create a GitHub release with a tag like `v1.1.0`. The **Release** workflow builds the plugin and attaches the zip to the release.
+3. Optionally publish to the [JetBrains Marketplace](https://plugins.jetbrains.com) too:
+   - The first upload is manual: on the Marketplace, choose **Upload plugin** and upload the zip from step 2. JetBrains reviews new plugins before listing them.
+   - For later versions, create a token under **Profile → My Tokens** and add it as a repository secret called `PUBLISH_TOKEN`. The Release workflow then publishes each new release automatically.
+   - Optional: to [sign the plugin](https://plugins.jetbrains.com/docs/intellij/plugin-signing.html), also add `CERTIFICATE_CHAIN`, `PRIVATE_KEY` and `PRIVATE_KEY_PASSWORD` secrets.
 
 ## Contributing
 
-Contributions are welcome! If you find a bug or have a feature request, please open an issue. If you'd like to contribute code, please fork the repository and submit a pull request.
+Bug reports and pull requests are welcome. Please run `./gradlew check` before opening a pull request.
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+MIT. See [LICENSE](LICENSE).

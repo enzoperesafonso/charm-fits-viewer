@@ -1,12 +1,17 @@
 # Gradle
-.gradle
+.gradle/
 build/
+!gradle/wrapper/gradle-wrapper.jar
 
-# IntelliJ Platform Plugin
+# Kotlin
+.kotlin/
+
+# IntelliJ Platform Gradle Plugin cache
 .intellijPlatform/
 
 # IntelliJ IDEA
 .idea/
+*.iml
 
 # macOS
 .DS_Store
@@ -14,8 +19,3 @@ build/
 # Logs
 *.log
 logs/
-
-# Package Files
-*.jar
-*.war
-*.zip
