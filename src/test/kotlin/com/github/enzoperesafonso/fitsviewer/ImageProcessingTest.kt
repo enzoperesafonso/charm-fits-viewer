@@ -39,6 +39,44 @@ class ImageProcessingTest {
     }
 
     @Test
+    fun `robust noise ignores bright sources`() {
+        val rnd = java.util.Random(42)
+        // Sky N(100, 5) with 10% of pixels in bright sources
+        val data = FloatArray(200_000) { i ->
+            (100 + 5 * rnd.nextGaussian() + if (i % 10 == 0) 1000 + rnd.nextDouble() * 5000 else 0.0).toFloat()
+        }
+        val stats = ImageStatistics.compute(data)!!
+        assertEquals(100.7, stats.median.toDouble(), 0.2)
+        // The 10% contamination nudges the MAD estimate up a little (astropy's mad_std gives 5.73 for
+        // the same mix), but it stays close to the true 5 while the plain std dev is ~1000x off
+        assertEquals(5.73, stats.robustSigma, 0.1)
+        assert(stats.stdDev > 500)
+
+        val clean = ImageStatistics.compute(FloatArray(200_000) { (100 + 5 * rnd.nextGaussian()).toFloat() })!!
+        assertEquals(5.0, clean.robustSigma, 0.05)
+    }
+
+    @Test
+    fun `colour maps match matplotlib`() {
+        // Reference values from matplotlib.colormaps[name](t)
+        val expected = mapOf(
+            ColorMap.VIRIDIS to listOf(0x440154, 0x21918C, 0xFDE725),
+            ColorMap.INFERNO to listOf(0x000004, 0xBC3754, 0xFCFFA4),
+            ColorMap.COOL to listOf(0x00FFFF, 0x807FFF, 0xFF00FF),
+        )
+        for ((map, colours) in expected) {
+            assertEquals(map.name, colours, listOf(0f, 0.5f, 1f).map { map.rgb(it) })
+        }
+    }
+
+    @Test
+    fun `inverted lookup table swaps the ends`() {
+        val lut = ImageRenderer.buildLut(ScaleMode.LINEAR, ColorMap.GRAYSCALE, inverted = true)
+        assertEquals(0xFFFFFF, lut.first())
+        assertEquals(0x000000, lut.last())
+    }
+
+    @Test
     fun `statistics of an image without finite pixels are null`() {
         assertNull(ImageStatistics.compute(floatArrayOf(Float.NaN, Float.NaN)))
     }

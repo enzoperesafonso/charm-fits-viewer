@@ -6,9 +6,17 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.actionSystem.Separator
+import com.intellij.openapi.fileChooser.FileChooserFactory
+import com.intellij.openapi.fileChooser.FileSaverDescriptor
+import com.intellij.openapi.progress.ProgressIndicator
+import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.progress.Task
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.DumbAwareToggleAction
 import com.intellij.openapi.ui.ComboBox
+import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.util.IconLoader
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.ui.JBColor
@@ -25,6 +33,7 @@ import java.awt.event.ComponentAdapter
 import java.awt.event.ComponentEvent
 import java.awt.event.ItemEvent
 import java.util.Locale
+import javax.imageio.ImageIO
 import javax.swing.Icon
 import javax.swing.JButton
 import javax.swing.JComponent
@@ -34,27 +43,23 @@ import javax.swing.ScrollPaneConstants
 import javax.swing.SwingUtilities
 
 /** Everything computed off the EDT for one image plane. */
-internal class LoadedImage(val image: FitsImage, val wcs: Wcs?, val stats: ImageStatistics)
+internal class LoadedImage(val image: FitsImage, val wcs: Wcs?, val stats: ImageStatistics, val exportName: String)
 
 /**
  * The "Image" tab: the scrollable image with a status bar, and levels and statistics on the right.
- * Its display controls live in [toolbar], which the editor shows in its top bar. Stretch, colour map,
- * levels preset and overlay settings are kept when switching HDUs or planes.
+ * Its display controls live in [toolbar], which the editor shows in its top bar. Display settings
+ * are kept when switching HDUs or planes and remembered across files and restarts ([ViewerSettings]).
  */
-internal class FitsImageView : JPanel(BorderLayout()) {
-    private enum class LevelPreset(val label: String, val tooltip: String) {
-        ZSCALE("ZScale", "IRAF/astropy ZScale: brings out faint structure around the sky level"),
-        P99_5("99.5%", "Clip the faintest and brightest 0.25% of pixels"),
-        MIN_MAX("Min/Max", "Full data range"),
-    }
-
-    private var scaleMode = ScaleMode.LINEAR
-    private var colorMap = ColorMap.GRAYSCALE
-    private var lut = ImageRenderer.buildLut(scaleMode, colorMap)
-    private var levelPreset = LevelPreset.ZSCALE
-    private var showCrosshair = false
-    private var showMagnifier = true
+internal class FitsImageView(private val project: Project) : JPanel(BorderLayout()) {
+    private var scaleMode = ViewerSettings.scaleMode
+    private var colorMap = ViewerSettings.colorMap
+    private var inverted = ViewerSettings.inverted
+    private var lut = ImageRenderer.buildLut(scaleMode, colorMap, inverted)
+    private var levelPreset = ViewerSettings.levelPreset
+    private var showCrosshair = ViewerSettings.showCrosshair
+    private var showMagnifier = ViewerSettings.showMagnifier
     private var measuring = false
+    private var exportName = "image"
 
     private var imagePanel: FitsImagePanel? = null
     private var stats: ImageStatistics? = null
@@ -80,6 +85,8 @@ internal class FitsImageView : JPanel(BorderLayout()) {
     private val maxLabel = statLabel()
     private val meanLabel = statLabel()
     private val stdDevLabel = statLabel()
+    private val medianLabel = statLabel()
+    private val noiseLabel = statLabel()
 
     /** Controls that only make sense while an image is shown. */
     private val imageControls = mutableListOf<JComponent>()
@@ -127,6 +134,7 @@ internal class FitsImageView : JPanel(BorderLayout()) {
             addItemListener {
                 if (it.stateChange == ItemEvent.SELECTED) {
                     scaleMode = it.item as ScaleMode
+                    ViewerSettings.scaleMode = scaleMode
                     rebuildLut()
                 }
             }
@@ -137,11 +145,20 @@ internal class FitsImageView : JPanel(BorderLayout()) {
             addItemListener {
                 if (it.stateChange == ItemEvent.SELECTED) {
                     colorMap = it.item as ColorMap
+                    ViewerSettings.colorMap = colorMap
                     rebuildLut()
                 }
             }
         }
         imageControls += listOf(scaleCombo, colorCombo)
+        val invertAction = actionToolbar(
+            "FitsViewer.ColorMap",
+            overlayToggle("Invert Colour Map", INVERT_ICON, { inverted }) {
+                inverted = it
+                ViewerSettings.inverted = it
+                rebuildLut()
+            },
+        )
 
         val zoomActions = actionToolbar(
             "FitsViewer.Zoom",
@@ -154,22 +171,27 @@ internal class FitsImageView : JPanel(BorderLayout()) {
             "FitsViewer.Overlays",
             overlayToggle("Crosshair at Image Centre", AllIcons.General.Locate, { showCrosshair }) {
                 showCrosshair = it
+                ViewerSettings.showCrosshair = it
                 imagePanel?.showCrosshair = it
             },
             overlayToggle("Magnifier", AllIcons.Actions.Find, { showMagnifier }) {
                 showMagnifier = it
+                ViewerSettings.showMagnifier = it
                 imagePanel?.showMagnifier = it
             },
             overlayToggle("Measure Distance (drag on the image)", MEASURE_ICON, { measuring }) {
                 measuring = it
                 imagePanel?.measuring = it
             },
+            Separator.getInstance(),
+            viewAction("Export as PNG…", AllIcons.ToolbarDecorator.Export) { exportPng(it) },
         )
 
         return JPanel(FlowLayout(FlowLayout.LEFT, JBUI.scale(4), 0)).apply {
             border = JBUI.Borders.compound(JBUI.Borders.customLineLeft(JBColor.border()), JBUI.Borders.emptyLeft(8))
             add(scaleCombo)
             add(colorCombo)
+            add(invertAction)
             add(zoomActions)
             add(zoomLabel)
             add(overlayActions)
@@ -183,6 +205,7 @@ internal class FitsImageView : JPanel(BorderLayout()) {
                 toolTipText = preset.tooltip
                 addActionListener {
                     levelPreset = preset
+                    ViewerSettings.levelPreset = preset
                     applyLevelPreset()
                 }
                 imageControls += this
@@ -198,7 +221,12 @@ internal class FitsImageView : JPanel(BorderLayout()) {
             .addLabeledComponent("Min:", minLabel)
             .addLabeledComponent("Max:", maxLabel)
             .addLabeledComponent("Mean:", meanLabel)
+            .addLabeledComponent("Median:", medianLabel)
             .addLabeledComponent("Std dev:", stdDevLabel)
+            .addLabeledComponent(
+                JBLabel("Noise σ:").apply { toolTipText = NOISE_TOOLTIP },
+                noiseLabel.apply { toolTipText = NOISE_TOOLTIP },
+            )
             .panel
 
         return FormBuilder.createFormBuilder()
@@ -232,6 +260,9 @@ internal class FitsImageView : JPanel(BorderLayout()) {
         maxLabel.text = format(loaded.stats.max.toDouble())
         meanLabel.text = format(loaded.stats.mean)
         stdDevLabel.text = format(loaded.stats.stdDev)
+        medianLabel.text = format(loaded.stats.median.toDouble())
+        noiseLabel.text = format(loaded.stats.robustSigma)
+        exportName = loaded.exportName
         infoLabel.text = if (image.step > 1) {
             "${image.originalWidth}×${image.originalHeight}, shown downsampled ${image.step}×"
         } else {
@@ -251,7 +282,7 @@ internal class FitsImageView : JPanel(BorderLayout()) {
         imagePanel = null
         stats = null
         histogramPanel.setData(null, 0f, 1f)
-        listOf(minLabel, maxLabel, meanLabel, stdDevLabel).forEach { it.text = "–" }
+        listOf(minLabel, maxLabel, meanLabel, medianLabel, stdDevLabel, noiseLabel).forEach { it.text = "–" }
         statusLabel.text = " "
         infoLabel.text = ""
         zoomLabel.text = ""
@@ -285,8 +316,34 @@ internal class FitsImageView : JPanel(BorderLayout()) {
     }
 
     private fun rebuildLut() {
-        lut = ImageRenderer.buildLut(scaleMode, colorMap)
+        lut = ImageRenderer.buildLut(scaleMode, colorMap, inverted)
         imagePanel?.render(black, white, lut)
+    }
+
+    /** Saves the image as currently stretched and coloured, at its displayed resolution, without overlays. */
+    private fun exportPng(panel: FitsImagePanel) {
+        // Deprecated (not scheduled for removal) in 2025+ in favour of a single-extension constructor that
+        // 2024.3 doesn't have; switch once pluginSinceBuild is raised past 243.
+        val descriptor = FileSaverDescriptor(
+            "Export Image as PNG",
+            "Saves the image with the current stretch and colour map, without overlays",
+            "png",
+        )
+        val target = FileChooserFactory.getInstance().createSaveFileDialog(descriptor, project)
+            .save("$exportName.png")?.file ?: return
+        var error: Exception? = null
+        // Modal, so the image can't be re-rendered while it is being written
+        ProgressManager.getInstance().run(object : Task.Modal(project, "Exporting PNG", false) {
+            override fun run(indicator: ProgressIndicator) {
+                try {
+                    ImageIO.write(panel.renderedImage, "png", target)
+                } catch (e: Exception) {
+                    error = e
+                }
+            }
+        })
+        error?.let { Messages.showErrorDialog(project, "Could not save ${target.name}: ${it.message}", "Export Failed") }
+            ?: run { statusLabel.text = "Exported ${target.name}" }
     }
 
     private fun updateZoomLabel() {
@@ -330,6 +387,9 @@ internal class FitsImageView : JPanel(BorderLayout()) {
 
     private companion object {
         val MEASURE_ICON: Icon = IconLoader.getIcon("/icons/measure.svg", FitsImageView::class.java)
+        val INVERT_ICON: Icon = IconLoader.getIcon("/icons/invert.svg", FitsImageView::class.java)
+
+        const val NOISE_TOOLTIP = "Robust standard deviation, 1.4826 × median absolute deviation. Unlike Std dev, sources barely affect it."
 
         val CONTROLS_HINT = (if (SystemInfo.isMac) "⌘" else "Ctrl") +
             "+scroll or +/− to zoom · drag or arrow keys to pan · 0 fit · 1 actual size"

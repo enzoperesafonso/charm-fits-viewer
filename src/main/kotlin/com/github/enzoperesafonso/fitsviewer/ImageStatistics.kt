@@ -16,8 +16,12 @@ class ImageStatistics private constructor(
     val mean: Double,
     val stdDev: Double,
     val finiteCount: Int,
+    /** Noise estimate that ignores sources: 1.4826 × median absolute deviation (σ for Gaussian noise). */
+    val robustSigma: Double,
     private val sortedSample: FloatArray,
 ) {
+    val median: Float get() = percentile(50.0)
+
     /** @param percent in 0..100 */
     fun percentile(percent: Double): Float {
         val i = (percent / 100.0 * (sortedSample.size - 1)).roundToInt()
@@ -99,6 +103,7 @@ class ImageStatistics private constructor(
         const val SAMPLE_SIZE = 500_000
         private const val ZSCALE_SAMPLES = 1000
         private const val ZSCALE_CONTRAST = 0.25
+        private const val MAD_TO_SIGMA = 1.4826
 
         /** Returns null if the image has no finite pixels. */
         fun compute(data: FloatArray): ImageStatistics? {
@@ -133,7 +138,12 @@ class ImageStatistics private constructor(
             }
             sample.sort()
 
-            return ImageStatistics(min, max, mean, sqrt(sumSq / count), count, sample)
+            val median = sample[(sample.size - 1) / 2]
+            val deviations = FloatArray(sample.size) { abs(sample[it] - median) }
+            deviations.sort()
+            val robustSigma = MAD_TO_SIGMA * deviations[(deviations.size - 1) / 2]
+
+            return ImageStatistics(min, max, mean, sqrt(sumSq / count), count, robustSigma, sample)
         }
     }
 }

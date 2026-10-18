@@ -177,6 +177,9 @@ internal class FitsImagePanel(
         }
     }
 
+    /** The image as rendered (stretch and colour map applied), without zoom or overlays. */
+    val renderedImage: BufferedImage get() = buffer
+
     fun render(black: Float, white: Float, lut: IntArray) {
         ImageRenderer.render(image, black, white, lut, buffer)
         repaint()

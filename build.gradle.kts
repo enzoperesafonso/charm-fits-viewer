@@ -61,6 +61,10 @@ intellijPlatform {
               <li>Accurate RA/Dec readout for TAN, SIN, ARC, ZEA and STG projections; on-sky measurement uses true angular separation.</li>
               <li>Reloads automatically when the file changes on disk.</li>
               <li>Cleaner interface: one toolbar, ZScale default stretch, log-scaled histogram that follows the levels, and a monospaced header view.</li>
+              <li>More colour maps (inferno, plasma, cividis, cool) matching matplotlib, plus an invert toggle.</li>
+              <li>Export the displayed image as PNG.</li>
+              <li>Median and robust noise (MAD σ) statistics.</li>
+              <li>Display settings are remembered across files and IDE restarts.</li>
             </ul>
         """.trimIndent()
     }
