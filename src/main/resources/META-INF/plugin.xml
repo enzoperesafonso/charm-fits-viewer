@@ -1,0 +1,28 @@
+<idea-plugin>
+    <id>com.github.enzoperesafonso.fitsviewer</id>
+    <name>FITS Viewer</name>
+    <vendor url="https://github.com/enzoperesafonso/charm-fits-viewer">enzoperesafonso</vendor>
+
+    <description><![CDATA[
+        <p>View FITS (Flexible Image Transport System) files directly in PyCharm and other JetBrains IDEs.</p>
+        <ul>
+          <li>Image viewer with linear, log, square-root and asinh stretches and several colour maps</li>
+          <li>Interactive histogram for setting black/white levels</li>
+          <li>Pixel value and RA/Dec readout under the cursor, magnifier and distance measurement</li>
+          <li>Header browser with filtering, for every HDU in the file</li>
+          <li>Multi-extension files, tile-compressed images (<code>.fz</code>) and data cubes</li>
+        </ul>
+        <p>Large images are read lazily and downsampled for display, so even big files open without exhausting IDE memory.</p>
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <fileType name="FITS"
+                  implementationClass="com.github.enzoperesafonso.fitsviewer.FitsFileType"
+                  fieldName="INSTANCE"
+                  extensions="fits;fit;fts;fz"/>
+
+        <fileEditorProvider implementation="com.github.enzoperesafonso.fitsviewer.FitsFileEditorProvider"/>
+    </extensions>
+</idea-plugin>
