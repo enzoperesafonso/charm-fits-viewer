@@ -33,6 +33,16 @@ class ImageProcessingTest {
         assertEquals(92.02867, lo.toDouble(), 1e-3)
         assertEquals(128.96000, hi.toDouble(), 1e-3)
 
+        // Gradient + outliers + NaNs, 5000 pixels: here the result depends on sampling every n-th pixel
+        // like astropy does (a regression: sampling evenly from the sorted values gave the full range)
+        val mixed = FloatArray(5000) { i ->
+            if (i % 97 == 0) Float.NaN
+            else (i * 0.5 + 300 * kotlin.math.sin(i * 0.37) + if (i % 53 == 0) 2000.0 else 0.0).toFloat()
+        }
+        val (mlo, mhi) = ImageStatistics.compute(mixed)!!.zscale
+        assertEquals(-292.07196, mlo.toDouble(), 1e-2)
+        assertEquals(3715.97656, mhi.toDouble(), 1e-2)
+
         // A uniform ramp has no outliers: astropy returns the full range
         val ramp = ImageStatistics.compute(FloatArray(1000) { it.toFloat() })!!.zscale
         assertEquals(0f to 999f, ramp)

@@ -224,7 +224,7 @@ internal class FitsImageView(private val project: Project) : JPanel(BorderLayout
             .addLabeledComponent("Median:", medianLabel)
             .addLabeledComponent("Std dev:", stdDevLabel)
             .addLabeledComponent(
-                JBLabel("Noise σ:").apply { toolTipText = NOISE_TOOLTIP },
+                JBLabel("Robust σ:").apply { toolTipText = NOISE_TOOLTIP },
                 noiseLabel.apply { toolTipText = NOISE_TOOLTIP },
             )
             .panel
@@ -389,7 +389,8 @@ internal class FitsImageView(private val project: Project) : JPanel(BorderLayout
         val MEASURE_ICON: Icon = IconLoader.getIcon("/icons/measure.svg", FitsImageView::class.java)
         val INVERT_ICON: Icon = IconLoader.getIcon("/icons/invert.svg", FitsImageView::class.java)
 
-        const val NOISE_TOOLTIP = "Robust standard deviation, 1.4826 × median absolute deviation. Unlike Std dev, sources barely affect it."
+        const val NOISE_TOOLTIP = "1.4826 × median absolute deviation. On mostly-sky images this is the background noise, " +
+            "barely affected by stars; on images filled with nebulosity it measures the spread of that emission."
 
         val CONTROLS_HINT = (if (SystemInfo.isMac) "⌘" else "Ctrl") +
             "+scroll or +/− to zoom · drag or arrow keys to pan · 0 fit · 1 actual size"

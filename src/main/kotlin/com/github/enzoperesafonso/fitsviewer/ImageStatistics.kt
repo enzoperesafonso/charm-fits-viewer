@@ -16,8 +16,13 @@ class ImageStatistics private constructor(
     val mean: Double,
     val stdDev: Double,
     val finiteCount: Int,
-    /** Noise estimate that ignores sources: 1.4826 × median absolute deviation (σ for Gaussian noise). */
+    /**
+     * 1.4826 × median absolute deviation: the noise σ when the image is mostly sky, barely affected by
+     * stars. For images filled with extended emission it measures the spread of that emission instead.
+     */
     val robustSigma: Double,
+    /** ZScale display limits, as in IRAF and astropy's `ZScaleInterval`. */
+    val zscale: Pair<Float, Float>,
     private val sortedSample: FloatArray,
 ) {
     val median: Float get() = percentile(50.0)
@@ -30,74 +35,6 @@ class ImageStatistics private constructor(
 
     /** Histogram of the pixel sample over [lo, hi]. Cheap enough to recompute on the UI thread. */
     fun histogram(lo: Float, hi: Float, bins: Int = 256): Histogram = Histogram.compute(sortedSample, lo, hi, bins)
-
-    /** ZScale display limits, as in IRAF and astropy's `ZScaleInterval`. */
-    val zscale: Pair<Float, Float> by lazy { computeZScale() }
-
-    private fun computeZScale(): Pair<Float, Float> {
-        // Fit a line to the sorted pixel values (rank vs value), rejecting outliers, and use its
-        // slope scaled by 1/contrast around the median.
-        val stride = max(1, sortedSample.size / ZSCALE_SAMPLES)
-        val s = DoubleArray((sortedSample.size + stride - 1) / stride) { sortedSample[it * stride].toDouble() }
-        val n = s.size
-        val center = (n - 1) / 2
-        val median = if (n % 2 == 1) s[center] else 0.5 * (s[center] + s[center + 1])
-        val minPixels = max(5, (n * 0.5).toInt())
-        val grow = max(1, (n * 0.01).toInt())
-
-        val bad = BooleanArray(n)
-        var good = n
-        var lastGood = n + 1
-        var slope = 0.0
-        for (iteration in 0 until 5) {
-            if (good >= lastGood || good < minPixels) break
-
-            var sx = 0.0
-            var sy = 0.0
-            var sxx = 0.0
-            var sxy = 0.0
-            for (i in 0 until n) {
-                if (bad[i]) continue
-                sx += i
-                sy += s[i]
-                sxx += i.toDouble() * i
-                sxy += i * s[i]
-            }
-            val denominator = good * sxx - sx * sx
-            if (denominator == 0.0) break
-            slope = (good * sxy - sx * sy) / denominator
-            val intercept = (sy - slope * sx) / good
-
-            var sum = 0.0
-            var sumSq = 0.0
-            for (i in 0 until n) {
-                if (bad[i]) continue
-                val r = s[i] - (intercept + slope * i)
-                sum += r
-                sumSq += r * r
-            }
-            val mean = sum / good
-            val threshold = 2.5 * sqrt(max(0.0, sumSq / good - mean * mean))
-
-            val rejected = BooleanArray(n) { bad[it] || abs(s[it] - (intercept + slope * it)) > threshold }
-            // Also reject the neighbours of rejected points
-            for (i in 0 until n) {
-                if (!rejected[i]) continue
-                for (j in max(0, i - grow / 2)..min(n - 1, i + (grow - 1) / 2)) bad[j] = true
-            }
-            lastGood = good
-            good = bad.count { !it }
-        }
-
-        var lo = s[0]
-        var hi = s[n - 1]
-        if (good >= minPixels) {
-            val scaled = slope / ZSCALE_CONTRAST
-            lo = max(lo, median - (center - 1) * scaled)
-            hi = min(hi, median + (n - center) * scaled)
-        }
-        return lo.toFloat() to hi.toFloat()
-    }
 
     companion object {
         const val SAMPLE_SIZE = 500_000
@@ -130,20 +67,93 @@ class ImageStatistics private constructor(
 
             val stride = (count + SAMPLE_SIZE - 1) / SAMPLE_SIZE
             val sample = FloatArray((count + stride - 1) / stride)
+            // ZScale samples the image like astropy does: every n-th finite pixel, at most ZSCALE_SAMPLES.
+            // Its result depends on that choice, so it can't reuse the percentile sample.
+            val zStride = max(1, count / ZSCALE_SAMPLES)
+            val zSample = DoubleArray(min(ZSCALE_SAMPLES, (count + zStride - 1) / zStride))
             var finiteIndex = 0
             var n = 0
+            var zn = 0
             for (v in data) {
                 if (!v.isFinite()) continue
-                if (finiteIndex++ % stride == 0) sample[n++] = v
+                if (finiteIndex % stride == 0) sample[n++] = v
+                if (finiteIndex % zStride == 0 && zn < zSample.size) zSample[zn++] = v.toDouble()
+                finiteIndex++
             }
             sample.sort()
+            zSample.sort()
 
             val median = sample[(sample.size - 1) / 2]
             val deviations = FloatArray(sample.size) { abs(sample[it] - median) }
             deviations.sort()
             val robustSigma = MAD_TO_SIGMA * deviations[(deviations.size - 1) / 2]
 
-            return ImageStatistics(min, max, mean, sqrt(sumSq / count), count, robustSigma, sample)
+            return ImageStatistics(min, max, mean, sqrt(sumSq / count), count, robustSigma, zscale(zSample), sample)
+        }
+
+        /**
+         * Fits a line to the sorted values [s] (rank vs value), rejecting outliers, and returns limits from
+         * its slope scaled by 1/contrast around the median. A port of astropy's `ZScaleInterval.get_limits`.
+         */
+        private fun zscale(s: DoubleArray): Pair<Float, Float> {
+            val n = s.size
+            val center = (n - 1) / 2
+            val median = if (n % 2 == 1) s[center] else 0.5 * (s[center] + s[center + 1])
+            val minPixels = max(5, (n * 0.5).toInt())
+            val grow = max(1, (n * 0.01).toInt())
+
+            val bad = BooleanArray(n)
+            var good = n
+            var lastGood = n + 1
+            var slope = 0.0
+            for (iteration in 0 until 5) {
+                if (good >= lastGood || good < minPixels) break
+
+                var sx = 0.0
+                var sy = 0.0
+                var sxx = 0.0
+                var sxy = 0.0
+                for (i in 0 until n) {
+                    if (bad[i]) continue
+                    sx += i
+                    sy += s[i]
+                    sxx += i.toDouble() * i
+                    sxy += i * s[i]
+                }
+                val denominator = good * sxx - sx * sx
+                if (denominator == 0.0) break
+                slope = (good * sxy - sx * sy) / denominator
+                val intercept = (sy - slope * sx) / good
+
+                var residualSum = 0.0
+                var residualSumSq = 0.0
+                for (i in 0 until n) {
+                    if (bad[i]) continue
+                    val r = s[i] - (intercept + slope * i)
+                    residualSum += r
+                    residualSumSq += r * r
+                }
+                val residualMean = residualSum / good
+                val threshold = 2.5 * sqrt(max(0.0, residualSumSq / good - residualMean * residualMean))
+
+                val rejected = BooleanArray(n) { bad[it] || abs(s[it] - (intercept + slope * it)) > threshold }
+                // Also reject the neighbours of rejected points
+                for (i in 0 until n) {
+                    if (!rejected[i]) continue
+                    for (j in max(0, i - grow / 2)..min(n - 1, i + (grow - 1) / 2)) bad[j] = true
+                }
+                lastGood = good
+                good = bad.count { !it }
+            }
+
+            var lo = s[0]
+            var hi = s[n - 1]
+            if (good >= minPixels) {
+                val scaled = slope / ZSCALE_CONTRAST
+                lo = max(lo, median - (center - 1) * scaled)
+                hi = min(hi, median + (n - center) * scaled)
+            }
+            return lo.toFloat() to hi.toFloat()
         }
     }
 }

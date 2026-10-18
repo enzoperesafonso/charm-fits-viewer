@@ -1,75 +1,70 @@
 # FITS Viewer for PyCharm
 
-A plugin for PyCharm and other JetBrains IDEs that opens FITS (Flexible Image Transport System) files in an image viewer instead of as unreadable binary.
+View FITS images and headers right inside PyCharm and other JetBrains IDEs. Double-click a `.fits` file and it opens as an image instead of unreadable binary.
+
+![FITS Viewer showing the Horsehead Nebula in PyCharm](docs/screenshot.png)
 
 ## Features
 
-- **Image viewer** for every image HDU, including tile-compressed (`.fz`) images and data cubes (pick the plane)
-- **Stretches:** linear, log, square root and asinh, with grayscale, heat, viridis, magma, inferno, plasma, cividis and cool colour maps (invertible)
+- **Every HDU:** images, tile-compressed (`.fz`) images and data cubes, with a plane picker for cubes
+- **Stretches:** linear, log, square root and asinh
+- **Colour maps:** grayscale, heat, viridis, magma, inferno, plasma, cividis and cool, any of them inverted
 - **Levels:** ZScale by default (as in DS9 and astropy), *99.5%* and *Min/Max* presets, and a histogram with draggable black and white points
-- **Cursor readout:** pixel coordinates, value and RA/Dec (TAN, SIN, ARC, ZEA and STG projections)
-- **Mouse and keyboard navigation:** zoom around the cursor, drag to pan
-- **Magnifier, crosshair and measuring tool** (pixel distance and on-sky separation)
-- **Statistics** including median and a robust noise estimate (MAD σ) that ignores stars
-- **Export as PNG** with the current stretch and colour map
-- **Remembers your display settings** across files and IDE restarts
+- **Cursor readout:** pixel coordinates, value and RA/Dec
+- **Navigation:** zoom around the cursor, drag to pan, keyboard shortcuts
+- **Tools:** magnifier, crosshair and a measuring tool that gives pixel distance and on-sky separation
+- **Statistics:** min, max, mean, median, standard deviation and a robust noise estimate that ignores stars
 - **Header browser** for every HDU, with filtering
-- **Reloads automatically** when the file changes on disk, for example when a script rewrites it
-
-Opens `.fits`, `.fit`, `.fts` and `.fz` files. Gzip-compressed FITS files with those extensions work too.
-
-Pixel coordinates are 0-based with `y` increasing upwards, so the value shown at `x, y` is `data[y, x]` in NumPy and astropy. Images are drawn with the first row at the bottom, like `imshow(..., origin="lower")` and DS9.
-
-### Controls
-
-| | Mouse | Keyboard |
-|---|---|---|
-| Zoom in / out | ⌘ (Ctrl on Windows/Linux) + scroll, or the toolbar buttons | `+` / `−` |
-| Fit to window | Fit toolbar button | `0` |
-| Actual size (1 image pixel = 1 screen pixel) | Actual Size toolbar button | `1` |
-| Pan | Drag, or scroll / two-finger swipe | Arrow keys (Shift for half a screen) |
-| Measure a distance | Turn on Measure (ruler icon), then drag. Middle-drag still pans. | |
-
-Click the image first so it has keyboard focus.
-
-### Memory use
-
-Only headers and the plane being displayed are held in memory, and nothing is kept once the tab is closed. Planes larger than 4096×4096 pixels are downsampled for display (every *n*-th pixel); the status bar says when that happens, and coordinates and values still refer to original pixels. Each open FITS tab uses at most about 130 MB.
+- **Export as PNG** with the current stretch and colour map
+- **Live reload:** the view updates when a script rewrites the file
+- **Remembers your settings** across files and IDE restarts
+- **Handles big files:** only the plane on screen is loaded, so large images open without slowing the IDE down
 
 ## Installation
 
-Requires PyCharm (or another JetBrains IDE) 2024.3 or newer.
+In PyCharm (2024.3 or newer), open **Settings → Plugins → Marketplace**, search for **FITS Viewer** and click **Install**.
 
-1. Download the latest `.zip` from the [Releases](https://github.com/enzoperesafonso/charm-fits-viewer/releases) page.
-2. In the IDE, open **Settings → Plugins**, click the ⚙️ icon and choose **Install Plugin from Disk…**
-3. Select the downloaded `.zip`. No restart needed.
+It works in any JetBrains IDE, including IntelliJ IDEA, CLion and WebStorm.
 
-## Development
+## Usage
 
-You need Git and any JDK 17+ to run Gradle. Gradle downloads JDK 21 for compiling if you don't have it.
+Open any `.fits`, `.fit`, `.fts` or `.fz` file. Gzip-compressed FITS files with those extensions open too.
+
+- **Top toolbar:** choose the HDU (and the plane, for cubes), the stretch and the colour map, zoom, and turn on the magnifier, crosshair or measuring tool.
+- **Right-hand panel:** set the black and white levels and see image statistics.
+- **Header tab:** shows the full header of the selected HDU.
+
+| | Mouse | Keyboard |
+|---|---|---|
+| Zoom in / out | ⌘ (Ctrl on Windows/Linux) + scroll | `+` / `−` |
+| Fit to window | Fit button | `0` |
+| Actual size | Actual Size button | `1` |
+| Pan | Drag, or scroll | Arrow keys (Shift to move further) |
+| Measure a distance | Turn on the ruler, then drag (middle-drag still pans) | |
+
+Click the image first so it has keyboard focus.
+
+**Coordinates** are 0-based with `y` increasing upwards, so the value shown at `x, y` is `data[y, x]` in NumPy and astropy. Images are drawn with the first row at the bottom, like `imshow(..., origin="lower")` and DS9.
+
+**Large images** (over 4096×4096 pixels per plane) are shown downsampled. The status bar says when this happens, and coordinates and values still refer to the original pixels.
+
+## Building from source
+
+You need Git and JDK 17 or newer.
 
 ```sh
-./gradlew runIde        # launch a sandbox PyCharm with the plugin installed
-./gradlew check         # run the tests
-./gradlew buildPlugin   # build the installable zip into build/distributions/
-./gradlew verifyPlugin  # check binary compatibility against recent IDE releases (large download)
+git clone https://github.com/enzoperesafonso/charm-fits-viewer.git
+cd charm-fits-viewer
+./gradlew runIde   # opens a sandbox PyCharm with the plugin installed
+./gradlew check    # runs the tests
 ```
-
-`platformVersion` in `gradle.properties` sets the IDE that `runIde` launches and the build compiles against. `pluginSinceBuild` is the oldest IDE the plugin supports.
-
-## Releasing
-
-1. Bump `pluginVersion` in `gradle.properties` and update the change notes in `build.gradle.kts`.
-2. Create a GitHub release with a tag like `v1.1.0`. The **Release** workflow builds the plugin and attaches the zip to the release.
-3. Optionally publish to the [JetBrains Marketplace](https://plugins.jetbrains.com) too:
-   - The first upload is manual: on the Marketplace, choose **Upload plugin** and upload the zip from step 2. JetBrains reviews new plugins before listing them.
-   - For later versions, create a token under **Profile → My Tokens** and add it as a repository secret called `PUBLISH_TOKEN`. The Release workflow then publishes each new release automatically.
-   - Optional: to [sign the plugin](https://plugins.jetbrains.com/docs/intellij/plugin-signing.html), also add `CERTIFICATE_CHAIN`, `PRIVATE_KEY` and `PRIVATE_KEY_PASSWORD` secrets.
 
 ## Contributing
 
-Bug reports and pull requests are welcome. Please run `./gradlew check` before opening a pull request.
+Bug reports, feature requests and pull requests are welcome. Please run `./gradlew check` before opening a pull request.
 
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+The screenshot shows the Horsehead Nebula from the Digitized Sky Survey (STScI/NASA), as distributed with the [astropy tutorials](https://learn.astropy.org).
