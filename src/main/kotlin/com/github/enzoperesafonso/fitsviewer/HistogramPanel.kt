@@ -5,7 +5,6 @@ import com.intellij.util.ui.JBUI
 import java.awt.BasicStroke
 import java.awt.Color
 import java.awt.Cursor
-import java.awt.Dimension
 import java.awt.Graphics
 import java.awt.Graphics2D
 import java.awt.LinearGradientPaint
@@ -13,8 +12,10 @@ import java.awt.Polygon
 import java.awt.RenderingHints
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
+import java.util.Locale
 import javax.swing.JPanel
 import kotlin.math.abs
+import kotlin.math.ln
 
 /** Histogram with draggable black and white level handles. */
 internal class HistogramPanel(private val onLevelsChanged: (Float, Float) -> Unit) : JPanel() {
@@ -26,7 +27,9 @@ internal class HistogramPanel(private val onLevelsChanged: (Float, Float) -> Uni
     private var dragging = Handle.NONE
 
     init {
-        preferredSize = Dimension(250, 100)
+        preferredSize = JBUI.size(200, 110)
+        // Layouts fall back to minimum sizes when space is short; never collapse the chart
+        minimumSize = JBUI.size(120, 110)
         background = JBColor.PanelBackground
         border = JBUI.Borders.customLine(JBColor.border(), 1)
 
@@ -102,7 +105,8 @@ internal class HistogramPanel(private val onLevelsChanged: (Float, Float) -> Uni
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
             val w = width
             val chartH = height - 25 // room for handles and labels
-            val maxCount = h.counts.maxOrNull()?.coerceAtLeast(1) ?: 1
+            // Log-scaled counts, so the faint tail is visible next to the sky peak
+            val maxLog = ln(1.0 + (h.counts.maxOrNull() ?: 0)).coerceAtLeast(1e-9)
 
             g2.paint = LinearGradientPaint(
                 0f, 0f, 0f, chartH.toFloat().coerceAtLeast(1f),
@@ -113,7 +117,7 @@ internal class HistogramPanel(private val onLevelsChanged: (Float, Float) -> Uni
             for (i in 0 until bins) {
                 val bx = (i.toFloat() / bins * w).toInt()
                 val bw = (w.toFloat() / bins).toInt().coerceAtLeast(1)
-                val bh = (h.counts[i].toFloat() / maxCount * chartH).toInt()
+                val bh = (ln(1.0 + h.counts[i]) / maxLog * chartH).toInt()
                 g2.fillRect(bx, chartH - bh, bw, bh)
             }
 
@@ -128,8 +132,12 @@ internal class HistogramPanel(private val onLevelsChanged: (Float, Float) -> Uni
 
             g2.font = JBUI.Fonts.miniFont()
             g2.color = JBColor.foreground()
-            g2.drawString(formatLevel(black), bPos - 15, chartH + 22)
-            g2.drawString(formatLevel(white), wPos - 15, chartH + 22)
+            // Black label to the left of its handle, white to the right, so they don't overlap
+            val fm = g2.fontMetrics
+            val blackLabel = formatLevel(black)
+            val whiteLabel = formatLevel(white)
+            g2.drawString(blackLabel, (bPos - fm.stringWidth(blackLabel) - 2).coerceAtLeast(0), chartH + 22)
+            g2.drawString(whiteLabel, (wPos + 2).coerceAtMost(w - fm.stringWidth(whiteLabel)), chartH + 22)
 
             g2.color = JBColor.GRAY
             val maxLabel = formatLevel(h.max)
@@ -152,6 +160,6 @@ internal class HistogramPanel(private val onLevelsChanged: (Float, Float) -> Uni
     private companion object {
         const val HANDLE_GRAB = 10
 
-        fun formatLevel(v: Float) = "%.4g".format(v)
+        fun formatLevel(v: Float) = "%.4g".format(Locale.ROOT, v)
     }
 }

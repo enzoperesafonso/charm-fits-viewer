@@ -24,6 +24,21 @@ class ImageProcessingTest {
     }
 
     @Test
+    fun `zscale matches astropy`() {
+        // Reference: astropy.visualization.ZScaleInterval().get_limits(v) on the same float32 values
+        val data = FloatArray(1000) { i ->
+            (100 + 5 * kotlin.math.sin(i * 0.7) + 3 * kotlin.math.cos(i * 1.3) + if (i % 37 == 0) 2000.0 else 0.0).toFloat()
+        }
+        val (lo, hi) = ImageStatistics.compute(data)!!.zscale
+        assertEquals(92.02867, lo.toDouble(), 1e-3)
+        assertEquals(128.96000, hi.toDouble(), 1e-3)
+
+        // A uniform ramp has no outliers: astropy returns the full range
+        val ramp = ImageStatistics.compute(FloatArray(1000) { it.toFloat() })!!.zscale
+        assertEquals(0f to 999f, ramp)
+    }
+
+    @Test
     fun `statistics of an image without finite pixels are null`() {
         assertNull(ImageStatistics.compute(floatArrayOf(Float.NaN, Float.NaN)))
     }

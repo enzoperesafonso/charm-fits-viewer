@@ -6,8 +6,9 @@ A plugin for PyCharm and other JetBrains IDEs that opens FITS (Flexible Image Tr
 
 - **Image viewer** for every image HDU, including tile-compressed (`.fz`) images and data cubes (pick the plane)
 - **Stretches:** linear, log, square root and asinh, with grayscale, heat, viridis and magma colour maps
-- **Interactive histogram** to drag the black and white levels, plus *Auto (2–98%)* and *Min / Max* presets
+- **Levels:** ZScale by default (as in DS9 and astropy), *99.5%* and *Min/Max* presets, and a histogram with draggable black and white points
 - **Cursor readout:** pixel coordinates, value and RA/Dec (TAN, SIN, ARC, ZEA and STG projections)
+- **Mouse and keyboard navigation:** zoom around the cursor, drag to pan
 - **Magnifier, crosshair and measuring tool** (pixel distance and on-sky separation)
 - **Header browser** for every HDU, with filtering
 - **Reloads automatically** when the file changes on disk, for example when a script rewrites it
@@ -15,6 +16,18 @@ A plugin for PyCharm and other JetBrains IDEs that opens FITS (Flexible Image Tr
 Opens `.fits`, `.fit`, `.fts` and `.fz` files. Gzip-compressed FITS files with those extensions work too.
 
 Pixel coordinates are 0-based with `y` increasing upwards, so the value shown at `x, y` is `data[y, x]` in NumPy and astropy. Images are drawn with the first row at the bottom, like `imshow(..., origin="lower")` and DS9.
+
+### Controls
+
+| | Mouse | Keyboard |
+|---|---|---|
+| Zoom in / out | ⌘ (Ctrl on Windows/Linux) + scroll, or the toolbar buttons | `+` / `−` |
+| Fit to window | Fit toolbar button | `0` |
+| Actual size (1 image pixel = 1 screen pixel) | Actual Size toolbar button | `1` |
+| Pan | Drag, or scroll / two-finger swipe | Arrow keys (Shift for half a screen) |
+| Measure a distance | Turn on Measure (ruler icon), then drag. Middle-drag still pans. | |
+
+Click the image first so it has keyboard focus.
 
 ### Memory use
 
