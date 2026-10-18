@@ -246,7 +246,7 @@ class FitsFileEditor(private val project: Project, private val file: VirtualFile
 
     override fun getComponent(): JComponent = component
 
-    override fun getPreferredFocusedComponent(): JComponent = tabs
+    override fun getPreferredFocusedComponent(): JComponent = imageView.focusTarget ?: tabs
 
     override fun getName(): String = "FITS Viewer"
 

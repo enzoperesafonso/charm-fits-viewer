@@ -8,6 +8,7 @@ A plugin for PyCharm and other JetBrains IDEs that opens FITS (Flexible Image Tr
 - **Stretches:** linear, log, square root and asinh, with grayscale, heat, viridis and magma colour maps
 - **Interactive histogram** to drag the black and white levels, plus *Auto (2–98%)* and *Min / Max* presets
 - **Cursor readout:** pixel coordinates, value and RA/Dec (TAN, SIN, ARC, ZEA and STG projections)
+- **Mouse and keyboard navigation:** zoom around the cursor, drag to pan
 - **Magnifier, crosshair and measuring tool** (pixel distance and on-sky separation)
 - **Header browser** for every HDU, with filtering
 - **Reloads automatically** when the file changes on disk, for example when a script rewrites it
@@ -15,6 +16,18 @@ A plugin for PyCharm and other JetBrains IDEs that opens FITS (Flexible Image Tr
 Opens `.fits`, `.fit`, `.fts` and `.fz` files. Gzip-compressed FITS files with those extensions work too.
 
 Pixel coordinates are 0-based with `y` increasing upwards, so the value shown at `x, y` is `data[y, x]` in NumPy and astropy. Images are drawn with the first row at the bottom, like `imshow(..., origin="lower")` and DS9.
+
+### Controls
+
+| | Mouse | Keyboard |
+|---|---|---|
+| Zoom in / out | ⌘ (Ctrl on Windows/Linux) + scroll, or the − / + buttons | `+` / `−` |
+| Fit to window | **Fit** button | `0` |
+| Actual size (1 image pixel = 1 screen pixel) | **1:1** button | `1` |
+| Pan | Drag, or scroll / two-finger swipe | Arrow keys (Shift for half a screen) |
+| Measure a distance | Tick **Measure**, then drag. Middle-drag still pans. | |
+
+Click the image first so it has keyboard focus.
 
 ### Memory use
 

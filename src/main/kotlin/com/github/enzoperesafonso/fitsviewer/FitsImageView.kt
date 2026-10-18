@@ -1,6 +1,7 @@
 package com.github.enzoperesafonso.fitsviewer
 
 import com.intellij.openapi.ui.ComboBox
+import com.intellij.openapi.util.SystemInfo
 import com.intellij.ui.JBColor
 import com.intellij.ui.JBSplitter
 import com.intellij.ui.components.JBLabel
@@ -64,6 +65,9 @@ internal class FitsImageView : JPanel(BorderLayout()) {
     private val stdDevLabel = statLabel()
 
     val displayedImage: FitsImage? get() = imagePanel?.image
+
+    /** The component that should get keyboard focus, if an image is shown. */
+    val focusTarget: JComponent? get() = imagePanel
 
     /** Controls that only make sense while an image is shown. */
     private val imageControls = mutableListOf<JComponent>()
@@ -178,7 +182,7 @@ internal class FitsImageView : JPanel(BorderLayout()) {
         val panel = FitsImagePanel(
             image,
             loaded.wcs,
-            onStatus = { statusLabel.text = it ?: " " },
+            onStatus = { statusLabel.text = it ?: CONTROLS_HINT },
             onZoomChanged = ::updateZoomLabel,
         ).apply {
             showCrosshair = crosshairBox.isSelected
@@ -203,6 +207,7 @@ internal class FitsImageView : JPanel(BorderLayout()) {
         }
 
         setView(panel)
+        statusLabel.text = CONTROLS_HINT
         imageControls.forEach { it.isEnabled = true }
         updateZoomLabel()
         // If the viewport already has its size no resize event will come, so fit now
@@ -246,7 +251,8 @@ internal class FitsImageView : JPanel(BorderLayout()) {
     }
 
     private companion object {
-        const val ZOOM_STEP = 1.25
+        val CONTROLS_HINT = (if (SystemInfo.isMac) "⌘" else "Ctrl") +
+            "+scroll or +/− to zoom · drag or arrow keys to pan · 0 fit · 1 actual size"
 
         fun statLabel() = JBLabel("–").apply { foreground = JBColor.GRAY }
 

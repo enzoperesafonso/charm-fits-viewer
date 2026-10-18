@@ -8,6 +8,7 @@
         <ul>
           <li>Image viewer with linear, log, square-root and asinh stretches and several colour maps</li>
           <li>Interactive histogram for setting black/white levels</li>
+          <li>Zoom around the cursor and drag to pan, with keyboard shortcuts</li>
           <li>Pixel value and RA/Dec readout under the cursor, magnifier and distance measurement</li>
           <li>Header browser with filtering, for every HDU in the file</li>
           <li>Multi-extension files, tile-compressed images (<code>.fz</code>) and data cubes</li>
