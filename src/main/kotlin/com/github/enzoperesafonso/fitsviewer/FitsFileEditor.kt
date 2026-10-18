@@ -2,6 +2,8 @@ package com.github.enzoperesafonso.fitsviewer
 
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.editor.colors.EditorColorsManager
+import com.intellij.openapi.editor.colors.EditorFontType
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorState
 import com.intellij.openapi.progress.ProcessCanceledException
@@ -35,6 +37,7 @@ import javax.swing.DefaultComboBoxModel
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.JSpinner
+import javax.swing.JTable
 import javax.swing.RowFilter
 import javax.swing.SpinnerNumberModel
 import javax.swing.event.DocumentEvent
@@ -72,19 +75,31 @@ class FitsFileEditor(private val project: Project, private val file: VirtualFile
     private var tempCopy: File? = null
 
     init {
-        val toolbar = JPanel(FlowLayout(FlowLayout.LEFT, 8, 4)).apply {
+        val fileControls = JPanel(FlowLayout(FlowLayout.LEFT, JBUI.scale(6), 0)).apply {
             add(JBLabel("HDU:"))
             add(hduCombo)
             add(planeLabel)
             add(planeSpinner)
             add(planeCountLabel)
-            add(warningLabel)
+        }
+        val toolbar = JPanel(BorderLayout()).apply {
+            border = JBUI.Borders.compound(JBUI.Borders.customLineBottom(JBColor.border()), JBUI.Borders.empty(4, 2))
+            add(fileControls, BorderLayout.WEST)
+            add(imageView.toolbar, BorderLayout.CENTER)
+            add(warningLabel.apply { border = JBUI.Borders.emptyRight(8) }, BorderLayout.EAST)
         }
         setPlaneControlsVisible(false)
 
         val headerTable = JBTable(headerModel).apply {
             rowSorter = TableRowSorter(headerModel)
             setShowGrid(false)
+            isStriped = true
+            // FITS cards are fixed-format text; show them in the editor font like a header listing
+            font = EditorColorsManager.getInstance().globalScheme.getFont(EditorFontType.PLAIN)
+            autoResizeMode = JTable.AUTO_RESIZE_LAST_COLUMN
+            columnModel.getColumn(0).preferredWidth = JBUI.scale(110)
+            columnModel.getColumn(1).preferredWidth = JBUI.scale(260)
+            columnModel.getColumn(2).preferredWidth = JBUI.scale(500)
         }
         headerFilter.addDocumentListener(object : DocumentAdapter() {
             override fun textChanged(e: DocumentEvent) {
@@ -95,12 +110,14 @@ class FitsFileEditor(private val project: Project, private val file: VirtualFile
             }
         })
         val headerPanel = JPanel(BorderLayout()).apply {
-            add(headerFilter.apply { border = JBUI.Borders.empty(4) }, BorderLayout.NORTH)
-            add(JBScrollPane(headerTable), BorderLayout.CENTER)
+            add(headerFilter.apply { border = JBUI.Borders.empty(6) }, BorderLayout.NORTH)
+            add(JBScrollPane(headerTable).apply { border = JBUI.Borders.customLineTop(JBColor.border()) }, BorderLayout.CENTER)
         }
 
         tabs.addTab("Image", imageView)
         tabs.addTab("Header", headerPanel)
+        // The image controls in the top bar don't apply to the header
+        tabs.addChangeListener { imageView.toolbar.isVisible = tabs.selectedIndex == IMAGE_TAB }
         component.add(toolbar, BorderLayout.NORTH)
         component.add(tabs, BorderLayout.CENTER)
 
@@ -182,9 +199,7 @@ class FitsFileEditor(private val project: Project, private val file: VirtualFile
             val image = FitsReader.readPlane(localFile(false), hdu, plane, checkCanceled = checkCanceled)
             checkCanceled()
             val stats = ImageStatistics.compute(image.data) ?: return@runInBackground null
-            checkCanceled()
-            val histogram = Histogram.compute(image.data, stats.percentile(0.1), stats.percentile(99.9))
-            LoadedImage(image, hdu.wcs, stats, histogram)
+            LoadedImage(image, hdu.wcs, stats)
         }) { loaded ->
             if (loaded == null) imageView.showMessage("The image contains no finite pixel values.") else imageView.showImage(loaded)
         }
@@ -300,6 +315,7 @@ class FitsFileEditor(private val project: Project, private val file: VirtualFile
     private companion object {
         val LOG = Logger.getInstance(FitsFileEditor::class.java)
         val COLUMNS = arrayOf("Keyword", "Value", "Comment")
+        const val IMAGE_TAB = 0
         const val HEADER_TAB = 1
     }
 }

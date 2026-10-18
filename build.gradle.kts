@@ -60,6 +60,7 @@ intellijPlatform {
               <li>Zoom around the cursor with Ctrl/⌘ + scroll, drag to pan, and keyboard shortcuts for zoom, fit and panning.</li>
               <li>Accurate RA/Dec readout for TAN, SIN, ARC, ZEA and STG projections; on-sky measurement uses true angular separation.</li>
               <li>Reloads automatically when the file changes on disk.</li>
+              <li>Cleaner interface: one toolbar, ZScale default stretch, log-scaled histogram that follows the levels, and a monospaced header view.</li>
             </ul>
         """.trimIndent()
     }

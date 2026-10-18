@@ -19,6 +19,7 @@ import java.awt.event.MouseEvent
 import java.awt.event.MouseWheelEvent
 import java.awt.geom.Point2D
 import java.awt.image.BufferedImage
+import java.util.Locale
 import javax.swing.AbstractAction
 import javax.swing.JPanel
 import javax.swing.JScrollPane
@@ -33,7 +34,8 @@ import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.roundToInt
 
-internal val IMAGE_BACKGROUND: Color = JBColor.lazy { if (JBColor.isBright()) Color.WHITE else Color.BLACK }
+/** Neutral backdrop around the image, distinct from both black sky and white saturation. */
+internal val IMAGE_BACKGROUND: Color = JBColor(Color(0xD3D5DA), Color(0x2B2D30))
 
 /** Zoom factor for one step of the zoom buttons and keys. */
 internal const val ZOOM_STEP = 1.25
@@ -262,7 +264,7 @@ internal class FitsImagePanel(
         val value = image.data[row * image.width + ix]
         val x = ix * image.step
         val y = row * image.step
-        val text = StringBuilder("x: $x  y: $y  value: ${"%.6g".format(value)}")
+        val text = StringBuilder("x: $x  y: $y  value: ${"%.6g".format(Locale.ROOT, value)}")
         if (wcs != null) {
             text.append("   |   ").append(wcs.format(wcs.pixelToWorld(x.toDouble(), y.toDouble())))
         }
@@ -326,12 +328,12 @@ internal class FitsImagePanel(
         g2.stroke = BasicStroke(2f)
         g2.drawLine(x1, y1, x2, y2)
 
-        var text = "%.1f px".format(hypot(end.x - start.x, end.y - start.y) * image.step)
+        var text = "%.1f px".format(Locale.ROOT, hypot(end.x - start.x, end.y - start.y) * image.step)
         if (wcs != null && wcs.isCelestial) {
             val p1 = toPixel(start)
             val p2 = toPixel(end)
             val degrees = Wcs.angularSeparation(wcs.pixelToWorld(p1[0], p1[1]), wcs.pixelToWorld(p2[0], p2[1]))
-            text += "  |  %.2f\"".format(degrees * 3600.0)
+            text += "  |  %.2f\"".format(Locale.ROOT, degrees * 3600.0)
         }
 
         g2.font = JBUI.Fonts.label()
