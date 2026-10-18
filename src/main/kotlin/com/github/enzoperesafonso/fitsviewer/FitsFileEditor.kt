@@ -50,7 +50,7 @@ import org.jetbrains.annotations.TestOnly
  * task reads from it, and only the HDU headers plus the displayed plane are kept in memory.
  */
 class FitsFileEditor(private val project: Project, private val file: VirtualFile) : UserDataHolderBase(), FileEditor {
-    private val imageView = FitsImageView()
+    private val imageView = FitsImageView(project)
     private val headerModel = HeaderTableModel()
     private val headerFilter = SearchTextField(false)
     private val hduCombo = ComboBox<HduInfo>()
@@ -199,7 +199,7 @@ class FitsFileEditor(private val project: Project, private val file: VirtualFile
             val image = FitsReader.readPlane(localFile(false), hdu, plane, checkCanceled = checkCanceled)
             checkCanceled()
             val stats = ImageStatistics.compute(image.data) ?: return@runInBackground null
-            LoadedImage(image, hdu.wcs, stats)
+            LoadedImage(image, hdu.wcs, stats, exportName(hdu, plane))
         }) { loaded ->
             if (loaded == null) imageView.showMessage("The image contains no finite pixel values.") else imageView.showImage(loaded)
         }
@@ -248,6 +248,16 @@ class FitsFileEditor(private val project: Project, private val file: VirtualFile
         file.inputStream.use { input -> copy.outputStream().use { input.copyTo(it) } }
         tempCopy = copy
         return copy
+    }
+
+    /** e.g. "m31", "m31_SCI" or "cube_plane3": the file name plus the HDU and plane when there is a choice. */
+    private fun exportName(hdu: HduInfo, plane: Int): String {
+        val parts = mutableListOf(file.nameWithoutExtension)
+        if (hduCombo.itemCount > 1) {
+            parts += hdu.header.firstOrNull { it.keyword == "EXTNAME" }?.value?.trim()?.takeIf { it.isNotEmpty() } ?: "hdu${hdu.index}"
+        }
+        if (hdu.planeCount > 1) parts += "plane${plane + 1}"
+        return parts.joinToString("_").replace(Regex("[^A-Za-z0-9._-]"), "_")
     }
 
     @get:TestOnly

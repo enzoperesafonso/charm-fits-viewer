@@ -5,11 +5,14 @@ A plugin for PyCharm and other JetBrains IDEs that opens FITS (Flexible Image Tr
 ## Features
 
 - **Image viewer** for every image HDU, including tile-compressed (`.fz`) images and data cubes (pick the plane)
-- **Stretches:** linear, log, square root and asinh, with grayscale, heat, viridis and magma colour maps
+- **Stretches:** linear, log, square root and asinh, with grayscale, heat, viridis, magma, inferno, plasma, cividis and cool colour maps (invertible)
 - **Levels:** ZScale by default (as in DS9 and astropy), *99.5%* and *Min/Max* presets, and a histogram with draggable black and white points
 - **Cursor readout:** pixel coordinates, value and RA/Dec (TAN, SIN, ARC, ZEA and STG projections)
 - **Mouse and keyboard navigation:** zoom around the cursor, drag to pan
 - **Magnifier, crosshair and measuring tool** (pixel distance and on-sky separation)
+- **Statistics** including median and a robust noise estimate (MAD σ) that ignores stars
+- **Export as PNG** with the current stretch and colour map
+- **Remembers your display settings** across files and IDE restarts
 - **Header browser** for every HDU, with filtering
 - **Reloads automatically** when the file changes on disk, for example when a script rewrites it
 
